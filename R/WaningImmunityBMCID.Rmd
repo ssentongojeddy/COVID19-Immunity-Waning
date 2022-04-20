@@ -1,0 +1,1419 @@
+---
+title: 'Temporal Evolution of SARS-CoV-2 Vaccine Effectiveness: A Systematic Review and Meta-analysis'
+Author: "Paddy Ssentongo"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+  html_notebook: default
+---
+
+```{r, message=FALSE, echo=FALSE,warning=FALSE}
+
+library(ggrepel)
+library(colorspace)
+library(colorblindr)
+library(meta)
+library(metafor)
+library(splines)
+library(dplyr)
+library(ggsci)
+```
+
+
+```{r setup, include=FALSE,warning=FALSE,echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE,message = FALSE,warning =F)
+```
+
+
+
+
+```{r,echo=FALSE,warning=FALSE}
+# read data -----------------------------------------
+rm(list=ls())
+dat=read.csv("data/Vaccines6.csv")
+```
+
+
+
+```{r,echo=FALSE,warning=FALSE,fig.height=8, fig.width=15}
+
+knots = quantile(dat$Time_day, p = c(0.25, 0.5, 0.75), na.rm = T)
+mod_ns = lm(Estimate_any_sars_cov_2~ ns(Time_day, knots = knots), data = dat)
+
+f <- dat %>%
+   #filter(Country != "Qatar") %>%
+  arrange(desc(N_vaccinated)) %>%
+  ggplot(aes(x = Time_day, y = Estimate_any_sars_cov_2)) +
+  #ggplot(aes(x = Period, y = Rates, fill=Period))+  
+  #geom_smooth(se = F, method = "loess", size = 1.5,lty=2, col="orange") +
+  #geom_smooth(method="gam", se=F,formula = y ~s(x),col="green")+
+  #geom_smooth(method="gam", se=F, formula = y ~s(x, bs="cs"), col="black")+
+  
+  geom_smooth(method = "lm", formula = y ~ ns(x,knots = knots),col="red", lty=2, se=F)+
+  #geom_smooth(method = "lm", formula = y ~ bs(x,knots = knots),col="blue", se=F) +
+  #geom_boxplot(show.legend = F)+
+  geom_point(aes(fill = Vaccine, size=N_vaccinated), shape = 21, alpha = .7) +
+  expand_limits(x=c(0,200), y=c(0, 100))+
+  #colorblindr::scale_fill_OkabeIto(name = "Vaccine type") +
+  scale_fill_nejm(name = "Vaccine type")+
+  scale_size(name = "N_vaccinated",
+             range = c(2, 10), breaks = c(10000000, 500000000)) +
+ # range = c(2, 10), breaks = c(10000, 500000, 1000000, 1500000, 2000000, 2500000, 4000000)) +
+  #annotate("text", label = "p==0.33~~R^{2}==0.00", x = 120, y = 95, parse = T) +
+  geom_text_repel(aes(label = Country), size = 2.5) +
+  facet_wrap(~ "Vaccine effectiveness against SARS-CoV-2 Infection") +
+  labs(x = "Time since full vaccination (days)", y = "VE (%)")  +
+  geom_hline(yintercept=50, linetype="dashed", color = "blue", size=1.5)+
+  guides(fill = guide_legend(override.aes = list(size = 3.5))) +
+  theme_bw(base_size = 14) +
+  theme(strip.text = element_text(face = "bold", size = 13))
+
+
+
+```
+
+
+
+
+### Effectiveness against symptomatic
+
+```{r,echo=FALSE,warning=FALSE,fig.height=8, fig.width=15}
+knots = quantile(dat$Time_day, p = c(0.25, 0.5, 0.75), na.rm = T)
+f1 <- dat %>%
+   #filter(Country != "Qatar") %>%
+  arrange(desc(N_vaccinated)) %>%
+  ggplot(aes(x = Time_day, y = Estimate_symptomatic)) +
+  #ggplot(aes(x = Period, y = Rates, fill=Period))+  
+  #geom_smooth(se = T, method = "loess", size = 1.5) +
+  geom_smooth(method = "lm", formula = y ~ ns(x,knots = knots),col="red", lty=2, se=F)+
+  #geom_boxplot(show.legend = F)+
+  geom_point(aes(fill = Vaccine, size=N_vaccinated), shape = 21, alpha = .7) +
+  expand_limits(x=c(0,200), y=c(0, 100))+
+  #colorblindr::scale_fill_OkabeIto(name = "Vaccine type") +
+  scale_fill_jama(name = "Vaccine type")+
+  scale_size(name = "N_vaccinated",
+             range = c(2, 10), breaks = c(10000000, 500000000)) +
+ # range = c(2, 10), breaks = c(10000, 500000, 1000000, 1500000, 2000000, 2500000, 4000000)) +
+  #annotate("text", label = "p==0.33~~R^{2}==0.00", x = 120, y = 95, parse = T) +
+  geom_text_repel(aes(label = Country), size = 2.5) +
+  facet_wrap(~ "Vaccine effectiveness against symptomatic") +
+  geom_hline(yintercept=50, linetype="dashed", color = "blue", size=1.5)+
+   labs(x = "Time since full vaccination (days)", y = "VE (%)")  +
+  guides(fill = guide_legend(override.aes = list(size = 3.5))) +
+  theme_bw(base_size = 14) +
+  theme(strip.text = element_text(face = "bold", size = 13))
+
+
+  
+
+```
+
+
+
+
+### Effectiveness against severe disease
+
+```{r,echo=FALSE,warning=FALSE,fig.height=8, fig.width=15}
+
+knots = quantile(dat$Time_day, p = c(0.25, 0.5, 0.75), na.rm = T)
+
+f2 <- dat %>%
+   #filter(Country != "Qatar") %>%
+  arrange(desc(N_vaccinated)) %>%
+  ggplot(aes(x = Time_day, y = Est_severe)) +
+  geom_smooth(method = "lm", formula = y ~ ns(x,knots = knots),col="red", lty=2, se=F)+
+  #ggplot(aes(x = Period, y = Rates, fill=Period))+  
+  #geom_smooth(se = F, method = "loess", size = 1.5) +
+  #geom_boxplot(show.legend = F)+
+  geom_point(aes(fill = Vaccine, size=N_vaccinated), shape = 21, alpha = .7) +
+   expand_limits(x=c(0,200), y=c(0, 100))+
+  #colorblindr::scale_fill_OkabeIto(name = "Vaccine type") +
+  scale_fill_jama(name = "Vaccine type")+
+  scale_size(name = "N_vaccinated",
+             range = c(2, 10), breaks = c(10000000, 500000000)) +
+ # range = c(2, 10), breaks = c(10000, 500000, 1000000, 1500000, 2000000, 2500000, 4000000)) +
+  #annotate("text", label = "p==0.33~~R^{2}==0.00", x = 120, y = 95, parse = T) +
+  geom_text_repel(aes(label = Country), size = 2.5) +
+  facet_wrap(~ "Vaccine effectiveness against severe COVID-19") +
+  geom_hline(yintercept=50, linetype="dashed", color = "blue", size=1.5)+
+  labs(x = "Time since full vaccination (days)", y = "VE (%)")  +
+  guides(fill = guide_legend(override.aes = list(size = 3.5))) +
+  theme_bw(base_size = 14) +
+  theme(strip.text = element_text(face = "bold", size = 13))
+
+```
+# Figure 2
+
+```{r, eval=T,echo=FALSE,warning=FALSE,fig.height=10, fig.width=20}
+
+ggpubr::ggarrange(f, f1, f2, ncol = 1, common.legend = T,labels=c("A", "B","C"), legend = "top")
+ggsave("figs7/Fig2.pdf", width = 15, height = 12)
+
+```
+
+### Effectiveness against asymptomatic
+
+```{r,echo=FALSE,warning=FALSE,fig.height=5, fig.width=8}
+
+knots = quantile(dat$Time_day, p = c(0.25, 0.5, 0.75), na.rm = T)
+s10 <- dat %>%
+
+   #filter(Country != "Qatar") %>%
+  arrange(desc(N_vaccinated)) %>%
+  ggplot(aes(x = Time_day, y = Estimate_asymptomatic)) +
+  geom_smooth(method = "lm", formula = y ~ ns(x,knots = knots),col="red", lty=2, se=F)+
+  #ggplot(aes(x = Period, y = Rates, fill=Period))+  
+  #geom_smooth(se = T, method = "loess", size = 1.5) +
+  #geom_boxplot(show.legend = F)+
+  geom_point(aes(fill = Vaccine, size=N_vaccinated), shape = 21, alpha = .7) +
+  expand_limits(x=c(0,200), y=c(0, 100))+
+  #colorblindr::scale_fill_OkabeIto(name = "Vaccine type") +
+  scale_fill_jama(name = "Vaccine type")+
+  scale_size(name = "N_vaccinated",
+             range = c(2, 10), breaks = c(10000000, 500000000)) +
+ # range = c(2, 10), breaks = c(10000, 500000, 1000000, 1500000, 2000000, 2500000, 4000000)) +
+  #annotate("text", label = "p==0.33~~R^{2}==0.00", x = 120, y = 95, parse = T) +
+  geom_text_repel(aes(label = Country), size = 2.5) +
+  facet_wrap(~ "VE against asymptomatic SARS-CoV-2 infection") +
+  geom_hline(yintercept=50, linetype="dashed", color = "blue", size=1.5)+
+    labs(x = "Time since full vaccination (days)", y = "VE (%)")  +
+  guides(fill = guide_legend(override.aes = list(size = 3.5))) +
+  theme_bw(base_size = 14) +
+  theme(strip.text = element_text(face = "bold", size = 13))
+
+ggsave("figs7/S10.pdf", width = 10, height = 8)  
+
+```
+
+
+# Age
+# 65 and older infect
+
+```{r,echo=FALSE,warning=FALSE,fig.height=8, fig.width=15}
+
+library(splines)
+knots = quantile(dat$Time_day, p = c(0.25, 0.5, 0.75), na.rm = T)
+
+mod_ns = lm(X65infect~ ns(Time_day, knots = knots), data = dat)
+
+fs1 <- dat %>%
+   #filter(Country != "Qatar") %>%
+  arrange(desc(N_vaccinated)) %>%
+  ggplot(aes(x = Time_day, y =X65infect)) +
+  #ggplot(aes(x = Period, y = Rates, fill=Period))+  
+  #geom_smooth(se = F, method = "loess", size = 1.5,lty=2, col="orange") +
+  #geom_smooth(method="gam", se=F,formula = y ~s(x),col="green")+
+  #geom_smooth(method="gam", se=F, formula = y ~s(x, bs="cs"), col="black")+
+  
+  geom_smooth(method = "lm", formula = y ~ ns(x,knots = knots),col="red", lty=2, se=F)+
+  #geom_smooth(method = "lm", formula = y ~ bs(x,knots = knots),col="blue", se=F) +
+  #geom_boxplot(show.legend = F)+
+  geom_point(aes(fill = Vaccine, size=N_vaccinated), shape = 21, alpha = .7) +
+  expand_limits(x=c(0,200), y=c(0, 100))+
+  #colorblindr::scale_fill_OkabeIto(name = "Vaccine type") +
+  scale_fill_nejm(name = "Vaccine type")+
+  scale_size(name = "N_vaccinated",
+             range = c(2, 10), breaks = c(10000000, 500000000)) +
+ # range = c(2, 10), breaks = c(10000, 500000, 1000000, 1500000, 2000000, 2500000, 4000000)) +
+  #annotate("text", label = "p==0.33~~R^{2}==0.00", x = 120, y = 95, parse = T) +
+  geom_text_repel(aes(label = Country), size = 2.5) +
+  facet_wrap(~ "VE against SARS-CoV-2 Infection in 65 years and older") +
+  labs(x = "Time since full vaccination (days)", y = "Estimated vaccine effectiveness (%)")  +
+  geom_hline(yintercept=50, linetype="dashed", color = "blue", size=1.5)+
+  guides(fill = guide_legend(override.aes = list(size = 3.5))) +
+  theme_bw(base_size = 14) +
+  theme(strip.text = element_text(face = "bold", size = 13))
+
+
+
+```
+
+
+
+# Age
+# 65 years and older severe
+
+```{r,echo=FALSE,warning=FALSE,fig.height=8, fig.width=15}
+knots = quantile(dat$Time_day, p = c(0.25, 0.5, 0.75), na.rm = T)
+
+mod_ns = lm(dat$X65severecritormort~ ns(Time_day, knots = knots), data = dat)
+
+fs2 <- dat %>%
+   #filter(Country != "Qatar") %>%
+  arrange(desc(N_vaccinated)) %>%
+  ggplot(aes(x = Time_day, y =X65severecritormort)) +
+  #ggplot(aes(x = Period, y = Rates, fill=Period))+  
+  #geom_smooth(se = F, method = "loess", size = 1.5,lty=2, col="orange") +
+  #geom_smooth(method="gam", se=F,formula = y ~s(x),col="green")+
+  #geom_smooth(method="gam", se=F, formula = y ~s(x, bs="cs"), col="black")+
+  
+  geom_smooth(method = "lm", formula = y ~ ns(x,knots = knots),col="red", lty=2, se=F)+
+  #geom_smooth(method = "lm", formula = y ~ bs(x,knots = knots),col="blue", se=F) +
+  #geom_boxplot(show.legend = F)+
+  geom_point(aes(fill = Vaccine, size=N_vaccinated), shape = 21, alpha = .7) +
+  expand_limits(x=c(0,200), y=c(0, 100))+
+  #colorblindr::scale_fill_OkabeIto(name = "Vaccine type") +
+  scale_fill_nejm(name = "Vaccine type")+
+  scale_size(name = "N_vaccinated",
+             range = c(2, 10), breaks = c(10000000, 500000000)) +
+ # range = c(2, 10), breaks = c(10000, 500000, 1000000, 1500000, 2000000, 2500000, 4000000)) +
+  #annotate("text", label = "p==0.33~~R^{2}==0.00", x = 120, y = 95, parse = T) +
+  geom_text_repel(aes(label = Country), size = 2.5) +
+  facet_wrap(~ "VE against severe disease in 65 years and older") +
+  labs(x = "Time since full vaccination (days)", y = "Estimated vaccine effectiveness (%)")  +
+  geom_hline(yintercept=50, linetype="dashed", color = "blue", size=1.5)+
+  guides(fill = guide_legend(override.aes = list(size = 3.5))) +
+  theme_bw(base_size = 14) +
+  theme(strip.text = element_text(face = "bold", size = 13))
+
+
+```
+
+
+
+
+# Age
+# less than 65 and older infection
+
+```{r,echo=FALSE,warning=FALSE,fig.height=8, fig.width=15}
+
+knots = quantile(dat$Time_day, p = c(0.25, 0.5, 0.75), na.rm = T)
+
+mod_ns = lm(dat$lessthan65infect~ ns(Time_day, knots = knots), data = dat)
+
+fs3 <- dat %>%
+   #filter(Country != "Qatar") %>%
+  arrange(desc(N_vaccinated)) %>%
+  ggplot(aes(x = Time_day, y =lessthan65infect)) +
+  #ggplot(aes(x = Period, y = Rates, fill=Period))+  
+  #geom_smooth(se = F, method = "loess", size = 1.5,lty=2, col="orange") +
+  #geom_smooth(method="gam", se=F,formula = y ~s(x),col="green")+
+  #geom_smooth(method="gam", se=F, formula = y ~s(x, bs="cs"), col="black")+
+  
+  geom_smooth(method = "lm", formula = y ~ ns(x,knots = knots),col="red", lty=2, se=F)+
+  #geom_smooth(method = "lm", formula = y ~ bs(x,knots = knots),col="blue", se=F) +
+  #geom_boxplot(show.legend = F)+
+  geom_point(aes(fill = Vaccine, size=N_vaccinated), shape = 21, alpha = .7) +
+  expand_limits(x=c(0,200), y=c(0, 100))+
+  #colorblindr::scale_fill_OkabeIto(name = "Vaccine type") +
+  scale_fill_nejm(name = "Vaccine type")+
+  scale_size(name = "N_vaccinated",
+             range = c(2, 10), breaks = c(10000000, 500000000)) +
+ # range = c(2, 10), breaks = c(10000, 500000, 1000000, 1500000, 2000000, 2500000, 4000000)) +
+  #annotate("text", label = "p==0.33~~R^{2}==0.00", x = 120, y = 95, parse = T) +
+  geom_text_repel(aes(label = Country), size = 2.5) +
+  facet_wrap(~ "VE against SARS-CoV-2 Infection in less 65 years") +
+  labs(x = "Time since full vaccination (days)", y = "Estimated vaccine effectiveness (%)")  +
+  geom_hline(yintercept=50, linetype="dashed", color = "blue", size=1.5)+
+  guides(fill = guide_legend(override.aes = list(size = 3.5))) +
+  theme_bw(base_size = 14) +
+  theme(strip.text = element_text(face = "bold", size = 13))
+
+
+
+```
+
+
+
+
+# Age
+# less than 65 and older infection
+
+```{r,echo=FALSE,warning=FALSE,fig.height=8, fig.width=15}
+
+knots = quantile(dat$Time_day, p = c(0.25, 0.5, 0.75), na.rm = T)
+
+mod_ns = lm(dat$lessthan65severecritormort~ ns(Time_day, knots = knots), data = dat)
+
+fs4 <- dat %>%
+   #filter(Country != "Qatar") %>%
+  arrange(desc(N_vaccinated)) %>%
+  ggplot(aes(x = Time_day, y =lessthan65severecritormort)) +
+  #ggplot(aes(x = Period, y = Rates, fill=Period))+  
+  #geom_smooth(se = F, method = "loess", size = 1.5,lty=2, col="orange") +
+  #geom_smooth(method="gam", se=F,formula = y ~s(x),col="green")+
+  #geom_smooth(method="gam", se=F, formula = y ~s(x, bs="cs"), col="black")+
+  
+  geom_smooth(method = "lm", formula = y ~ ns(x,knots = knots),col="red", lty=2, se=F)+
+  #geom_smooth(method = "lm", formula = y ~ bs(x,knots = knots),col="blue", se=F) +
+  #geom_boxplot(show.legend = F)+
+  geom_point(aes(fill = Vaccine, size=N_vaccinated), shape = 21, alpha = .7) +
+  expand_limits(x=c(0,200), y=c(0, 100))+
+  #colorblindr::scale_fill_OkabeIto(name = "Vaccine type") +
+  scale_fill_nejm(name = "Vaccine type")+
+  scale_size(name = "N_vaccinated",
+             range = c(2, 10), breaks = c(10000000, 500000000)) +
+ # range = c(2, 10), breaks = c(10000, 500000, 1000000, 1500000, 2000000, 2500000, 4000000)) +
+  #annotate("text", label = "p==0.33~~R^{2}==0.00", x = 120, y = 95, parse = T) +
+  geom_text_repel(aes(label = Country), size = 2.5) +
+  facet_wrap(~ "VE against severe disease in less 65 years") +
+  labs(x = "Time since full vaccination (days)", y = "Estimated vaccine effectiveness (%)")  +
+  geom_hline(yintercept=50, linetype="dashed", color = "blue", size=1.5)+
+  guides(fill = guide_legend(override.aes = list(size = 3.5))) +
+  theme_bw(base_size = 14) +
+  theme(strip.text = element_text(face = "bold", size = 13))
+
+ggpubr::ggarrange(fs3, fs1, fs4,fs2, ncol = 2, nrow=2, labels=c("A", "B", "C", "D"), common.legend = T, legend = "top")
+ggsave("figs7/2Fig4.pdf", width = 15, height = 10)
+
+```
+
+
+## Part II
+
+### Meta-analysis with Maximum Likelihood Method: Effectiveness against SARS-CoV-2 infections
+
+```{r, eval=T,,echo=FALSE,warning=FALSE}
+
+#dat=read.csv("data/VE_Clean_Final_meta.csv")
+dat=read.csv("data/Vaccines6.csv")
+dat <- dat[ which(dat$Month <6),]
+
+l1=is.na(dat$Estimate_any_sars_cov_2a)
+dat=dat[!l1,]
+
+dat$mean=dat$Estimate_any_sars_cov_2a
+#dat$seTE=(log(dat$RR_U-log(dat$RR_L))/(3.92))
+
+dat$lower <- dat$LCI_any_sars_cov_2a
+
+dat$upper <- dat$UCI_any_sars_cov_2a
+
+dat$sd <- (dat$upper - dat$lower)/3.92
+```
+
+
+
+```{r, echo=FALSE,warning=FALSE, eval=T}
+m<- metamean(n=N_vaccinated,
+                   mean = mean,
+                   sd = sd,
+                   studlab = Study,
+                    comb.fixed = FALSE,
+                   comb.random = TRUE,
+                   data = dat,
+                   sm = "MRAW",
+                   method.tau = "DL",
+                   hakn =F,
+                   title = "VE infections Overall")
+
+
+```
+
+# by month
+
+```{r,fig.height=15, fig.width=10, echo=FALSE,warning=FALSE, eval=T}
+
+
+
+mw<- update(m, byvar=Month, print.byvar=T)
+
+pdf("figs7/Fig3.pdf", width = 10, height = 15)
+forest(mw,
+       #leftcols = c("Study"),
+       leftlabs = c("Study"),
+       digits = 2,
+        bysort=T,
+       overall= T, overall.hetstat = F,
+       ref=NA,
+       col.by="black",
+       #sortvar = Year_Publication,
+       rightcols=c("effect", "ci"),
+       sortvar = mean,
+       rightlabs = c("Mean VE", "95% CI"),
+       squaresize=0.5,
+       col.square="blue",
+       col.diamond="maroon",
+       col.diamond.lines="maroon",
+       #xlab="Vaccine Effectiveness against SARS-CoV-2 infections (%)",
+       xlab="Vaccine protection against SARS-CoV-2 infections (%)",
+       print.pval.Q = T,
+       digits.pval.Q=4,
+       print.tau2=F,
+       xlim = c(-20,100), at = c(-20, 0,20,40,60,80,100),pscale = 100,
+       backtransf = T)
+dev.off()
+
+```
+
+
+```{r, eval=T,,echo=FALSE,warning=FALSE}
+
+dat=read.csv("data/Vaccines6.csv")
+
+
+l1=is.na(dat$Estimate_any_sars_cov_2a)
+dat=dat[!l1,]
+
+dat$mean=dat$Estimate_any_sars_cov_2a
+#dat$seTE=(log(dat$RR_U-log(dat$RR_L))/(3.92))
+
+dat$lower <- dat$LCI_any_sars_cov_2a
+
+dat$upper <- dat$UCI_any_sars_cov_2a
+
+dat$sd <- (dat$upper - dat$lower)/3.92
+```
+
+
+
+```{r, echo=FALSE,warning=FALSE, eval=T}
+m<- metamean(n=N_vaccinated,
+                   mean = mean,
+                   sd = sd,
+                   studlab = Study,
+                   comb.fixed = FALSE,
+                   comb.random = TRUE,
+                   data = dat,
+                   sm = "MRAW",
+                   method.tau = "DL",
+                   hakn =F,
+                   title = "VE infections Overall")
+
+
+```
+
+
+
+# Funnel plots : Risk ratio -----------------------------------------
+```{r}
+
+pdf("figs7/S11A.pdf", width = 15, height = 8)
+funnel(m,xlab = "VE against SARS-CoV-2 infection (%)",studlab = F)
+dev.off()
+
+metabias(m, method="linreg")# Egger's linear regression test
+
+```
+
+
+```{r}
+
+metabias(m, method="rank")
+
+```
+
+
+# by vaccine
+
+```{r,fig.height=15, fig.width=10, echo=FALSE,warning=FALSE, eval=T}
+mv<- update(m, byvar=Vaccine, print.byvar=T)
+
+
+pdf("figs7/S1.pdf", width = 10, height = 12)
+forest(mv,
+       #leftcols = c("Study"),
+       leftlabs = c("Study"),
+       digits = 2,
+        bysort=T,
+       overall= T, overall.hetstat = F,
+       ref=NA,
+       col.by="black",
+       #sortvar = Year_Publication,
+       rightcols=c("effect", "ci"),
+       sortvar = mean,
+       rightlabs = c("Mean VE", "95% CI"),
+       squaresize=0.5,
+       col.square="blue",
+       col.diamond="maroon",
+       col.diamond.lines="maroon",
+       xlab="Vaccine protection against SARS-CoV-2 infections (%)",
+       print.pval.Q = T,
+       digits.pval.Q=4,
+       print.tau2=F,
+       xlim = c(-20,100), at = c(-20, 0,20,40,60,80,100),pscale = 100,
+       backtransf = T)
+dev.off()
+
+```
+
+
+
+
+# by study design
+
+```{r,fig.height=15, fig.width=10, echo=FALSE,warning=FALSE, eval=T}
+mv<- update(m, byvar=RCT_or_Non.RCT, print.byvar=F)
+
+
+pdf("figs7/S4.pdf", width = 10, height = 12)
+forest(mv,
+       #leftcols = c("Study"),
+       leftlabs = c("Study"),
+       digits = 2,
+        bysort=T,
+       overall= T, overall.hetstat = F,
+       ref=NA,
+       col.by="black",
+       #sortvar = Year_Publication,
+       rightcols=c("effect", "ci"),
+       sortvar = mean,
+       rightlabs = c("Mean VE", "95% CI"),
+       squaresize=0.5,
+       col.square="blue",
+       col.diamond="maroon",
+       col.diamond.lines="maroon",
+       xlab="Vaccine protection against SARS-CoV-2 infections (%)",
+       print.pval.Q = T,
+       digits.pval.Q=4,
+       print.tau2=F,
+       xlim = c(-60,100), at = c(-60, -40, -20, 0,20,40,60,80,100),pscale = 100,
+       backtransf = T)
+dev.off()
+
+```
+
+# by country
+
+
+
+```{r, eval=T,,echo=FALSE,warning=FALSE}
+
+dat=read.csv("data/Vaccines6.csv")
+
+
+l1=is.na(dat$Estimate_any_sars_cov_2a)
+dat=dat[!l1,]
+
+dat$mean=dat$Estimate_any_sars_cov_2a
+#dat$seTE=(log(dat$RR_U-log(dat$RR_L))/(3.92))
+
+dat$lower <- dat$LCI_any_sars_cov_2a
+
+dat$upper <- dat$UCI_any_sars_cov_2a
+
+dat$sd <- (dat$upper - dat$lower)/3.92
+```
+
+
+
+```{r, echo=FALSE,warning=FALSE, eval=T}
+m<- metamean(n=N_vaccinated,
+                   mean = mean,
+                   sd = sd,
+                   studlab = paste(Study, Month, sep = ", "),
+                   comb.fixed = FALSE,
+                   comb.random = TRUE,
+                   data = dat,
+                   sm = "MRAW",
+                   method.tau = "DL",
+                   hakn =F,
+                   title = "VE infections Overall")
+
+
+```
+
+
+```{r,fig.height=15, fig.width=10, echo=FALSE,warning=FALSE, eval=T}
+mv<- update(m, byvar=WHO, print.byvar=F)
+
+
+pdf("figs7/S7.pdf", width = 10, height = 15)
+forest(mv,
+       #leftcols = c("Study"),
+       leftlabs = c("Study, Time-Point"),
+       digits = 2,
+        bysort=T,
+       overall= T, overall.hetstat = F,
+       ref=NA,
+       col.by="black",
+       #sortvar = Year_Publication,
+       rightcols=c("effect", "ci"),
+       sortvar = mean,
+       rightlabs = c("Mean VE", "95% CI"),
+       squaresize=0.5,
+       col.square="blue",
+       col.diamond="maroon",
+       col.diamond.lines="maroon",
+       xlab="Vaccine protection against SARS-CoV-2 infections (%)",
+       print.pval.Q = T,
+       digits.pval.Q=4,
+       print.tau2=F,
+       xlim = c(-20,100), at = c(-20, 0,20,40,60,80,100),pscale = 100,
+       backtransf = T)
+dev.off()
+
+```
+
+
+### Age: Meta-analysis with DL: Effectiveness against SARS-CoV-2 infections: >65yrs
+
+```{r, eval=T,,echo=FALSE,warning=FALSE}
+dat=read.csv("data/Vaccines6.csv")
+
+l1=is.na(dat$X65infect)
+dat=dat[!l1,]
+
+dat$mean=dat$X65infect
+#dat$seTE=(log(dat$RR_U-log(dat$RR_L))/(3.92))
+
+dat$lower <- dat$LCL_65infect
+
+dat$upper <- dat$uCL_65infect
+
+dat$sd <- (dat$upper - dat$lower)/3.92
+```
+
+
+
+```{r, echo=FALSE,warning=FALSE, eval=T}
+m<- metamean(n=N_vaccinated,
+                   mean = mean,
+                   sd = sd,
+                   studlab = Study,
+                    comb.fixed = FALSE,
+                   comb.random = TRUE,
+                   data = dat,
+                   sm = "MRAW",
+                   method.tau = "DL",
+                   hakn = T,
+                   title = "VE infection >65")
+
+
+```
+
+
+
+```{r,fig.height=15, fig.width=10, echo=FALSE,warning=FALSE, eval=T}
+#mw<- update(m, byvar=Month, print.byvar=T)
+
+pdf("figs7/Figure4A.pdf", width = 10, height = 8)
+forest(m,
+       #leftcols = c("Study"),
+       leftlabs = c("Study"),
+       digits = 2,
+        bysort=T,
+       overall= T, overall.hetstat = F,
+       ref=NA,
+       col.by="black",
+       #sortvar = Year_Publication,
+       rightcols=c("effect", "ci"),
+       sortvar = mean,
+       rightlabs = c("Mean VE", "95% CI"),
+       squaresize=0.5,
+       col.square="blue",
+       col.diamond="maroon",
+       col.diamond.lines="maroon",
+       xlab="Vaccine protection against SARS-CoV-2 infection: > 65 years (%)",
+       print.pval.Q = T,
+       digits.pval.Q=4,
+       print.tau2=F,
+       xlim = c(-20,100), at = c(-20, 0,20,40,60,80,100),pscale = 100,
+       backtransf = T)
+dev.off()
+
+```
+
+
+### Figure 4 
+
+
+### Age: Meta-analysis with DL: Effectiveness against SARS-CoV-2 infections: <65yrs
+
+```{r, eval=T,,echo=FALSE,warning=FALSE}
+dat=read.csv("data/Vaccines6.csv")
+
+l1=is.na(dat$lessthan65infect)
+dat=dat[!l1,]
+
+dat$mean=dat$lessthan65infect
+#dat$seTE=(log(dat$RR_U-log(dat$RR_L))/(3.92))
+
+dat$lower <- dat$lcllessthan65infect
+
+dat$upper <- dat$ucllessthan65infect
+
+dat$sd <- (dat$upper - dat$lower)/3.92
+```
+
+
+
+```{r, echo=FALSE,warning=FALSE, eval=T}
+m<- metamean(n=N_vaccinated,
+                   mean = mean,
+                   sd = sd,
+                   studlab = Study,
+                    comb.fixed = FALSE,
+                   comb.random = TRUE,
+                   data = dat,
+                   sm = "MRAW",
+                   method.tau = "DL",
+                   hakn = T,
+                   title = "VE infect less than 65")
+
+
+```
+
+
+
+```{r,fig.height=15, fig.width=10, echo=FALSE,warning=FALSE, eval=T}
+#mw<- update(m, byvar=Month, print.byvar=T)
+
+pdf("figs7/Figure4B.pdf", width = 10, height = 8)
+forest(m,
+       #leftcols = c("Study"),
+       leftlabs = c("Study"),
+       digits = 2,
+        bysort=T,
+       overall= T, overall.hetstat = F,
+       ref=NA,
+       col.by="black",
+       #sortvar = Year_Publication,
+       rightcols=c("effect", "ci"),
+       sortvar = mean,
+       rightlabs = c("Mean VE", "95% CI"),
+       squaresize=0.5,
+       col.square="blue",
+       col.diamond="maroon",
+       col.diamond.lines="maroon",
+       xlab="Vaccine protection against SARS-CoV-2 infections: < 65 years (%)",
+       print.pval.Q = T,
+       digits.pval.Q=4,
+       print.tau2=F,
+       xlim = c(-20,100), at = c(-20, 0,20,40,60,80,100),pscale = 100,
+       backtransf = T)
+dev.off()
+
+```
+
+
+
+
+### Age: Meta-analysis using DL method: Effectiveness against Severe COVID-19 Disease: >65
+
+```{r,fig.height=6, fig.width=4, echo=FALSE,warning=FALSE, eval=T}
+
+dat=read.csv("data/Vaccines6.csv")
+
+l1=is.na(dat$X65severecritormort)
+dat=dat[!l1,]
+
+dat$mean=dat$X65severecritormort
+#dat$seTE=(log(dat$RR_U-log(dat$RR_L))/(3.92))
+
+dat$lower <- dat$LCL_65severecritormort
+
+dat$upper <- dat$uCL_65severecritormort
+
+dat$sd <- (dat$upper - dat$lower)/3.92
+```
+
+
+
+```{r, echo=FALSE,warning=FALSE, eval=T}
+m1<- metamean(n=N_vaccinated,
+                   mean = mean,
+                   sd = sd,
+                   studlab = Study,
+                    comb.fixed = FALSE,
+                   comb.random = TRUE,
+                   data = dat,
+                   sm = "MRAW",
+                   method.tau = "DL",
+                   hakn = T)
+
+
+```
+
+
+
+```{r,fig.height=15, fig.width=10, echo=FALSE,warning=FALSE, eval=T}
+#mw1<- update(m1, byvar=Month, print.byvar=T)
+pdf("figs7/Figure4C.pdf", width = 10, height = 8)
+forest(m1,
+       leftlabs = c("Study"),
+       digits = 2,
+        bysort=T,
+       overall= T, overall.hetstat = F,
+       ref=NA,
+       col.by="black",
+       #sortvar = Year_Publication,
+       rightcols=c("effect", "ci"),
+       sortvar = mean,
+       rightlabs = c("Mean VE", "95% CI"),
+       squaresize=0.5,
+       col.square="blue",
+       col.diamond="maroon",
+       col.diamond.lines="maroon",
+       xlab="Vaccine protection against severe COVID-19 disease: >65 years (%)",
+       print.pval.Q = T,
+       digits.pval.Q=4,
+       print.tau2=F,
+       xlim = c(-20,100), at = c(-20, 0,20,40,60,80,100),pscale = 100,
+       backtransf = T)
+dev.off()
+
+```
+
+
+### Age: Meta-analysis using DL method: Effectiveness against Severe COVID-19 Disease: < 65 years
+
+```{r,fig.height=6, fig.width=4, echo=FALSE,warning=FALSE, eval=T}
+
+dat=read.csv("data/Vaccines6.csv")
+
+l1=is.na(dat$lessthan65severecritormort)
+dat=dat[!l1,]
+
+dat$mean=dat$lessthan65severecritormort
+#dat$seTE=(log(dat$RR_U-log(dat$RR_L))/(3.92))
+
+dat$lower <- dat$LCL_lessthan65severecritormort
+
+dat$upper <- dat$uCL_lessthan65severecritormort
+
+dat$sd <- (dat$upper - dat$lower)/3.92
+```
+
+
+
+```{r, echo=FALSE,warning=FALSE, eval=T}
+m1<- metamean(n=N_vaccinated,
+                   mean = mean,
+                   sd = sd,
+                   studlab = Study,
+                    comb.fixed = FALSE,
+                   comb.random = TRUE,
+                   data = dat,
+                   sm = "MRAW",
+                   method.tau = "DL",
+                   hakn = T)
+
+
+```
+
+
+
+```{r,fig.height=15, fig.width=10, echo=FALSE,warning=FALSE, eval=T}
+#mw1<- update(m1, byvar=Month, print.byvar=T)
+pdf("figs7/Figure4D.pdf", width = 10, height = 8)
+forest(m1,
+       leftlabs = c("Study"),
+       digits = 2,
+        bysort=T,
+       overall= T, overall.hetstat = F,
+       ref=NA,
+       col.by="black",
+       #sortvar = Year_Publication,
+       rightcols=c("effect", "ci"),
+       sortvar = mean,
+       rightlabs = c("Mean VE", "95% CI"),
+       squaresize=0.5,
+       col.square="blue",
+       col.diamond="maroon",
+       col.diamond.lines="maroon",
+       xlab="Vaccine protection against severe COVID-19 disease: < 65 years (%)",
+       print.pval.Q = T,
+       digits.pval.Q=4,
+       print.tau2=F,
+       xlim = c(-20,100), at = c(-20, 0,20,40,60,80,100),pscale = 100,
+       backtransf = T)
+dev.off()
+
+```
+
+
+### Figure 3............................................
+
+### Meta-analysis using DL method: Effectiveness against Severe COVID-19 Disease
+
+```{r,fig.height=6, fig.width=4, echo=FALSE,warning=FALSE, eval=T}
+
+dat=read.csv("data/Vaccines6.csv")
+dat <- dat[ which(dat$Month <6),]
+#dat=read.csv("data/Vaccines5.csv")
+
+l1=is.na(dat$Est_severea)
+dat=dat[!l1,]
+
+
+l1=is.na(dat$Hospitalization)
+dat=dat[!l1,]
+
+dat$mean=dat$Est_severea
+#dat$seTE=(log(dat$RR_U-log(dat$RR_L))/(3.92))
+
+dat$lower <- dat$lcl_severea
+
+dat$upper <- dat$UCL_severea
+
+dat$sd <- (dat$upper - dat$lower)/3.92
+```
+
+
+
+```{r, echo=FALSE,warning=FALSE, eval=T}
+m1<- metamean(n=N_vaccinated,
+                   mean = mean,
+                   sd = sd,
+                   studlab = Study,
+                    comb.fixed = F,
+                   comb.random = TRUE,
+                   data = dat,
+                   sm = "MRAW",
+                   method.tau = "DL",
+                   hakn = T)
+
+
+```
+
+
+
+# Funnel plots : Risk ratio -----------------------------------------
+```{r}
+
+pdf("figs7/S11C.pdf", width = 15, height = 8)
+funnel(m1,xlab = "VE against Severe COVID-19  (%)",studlab = F)
+dev.off()
+
+metabias(m1, method="linreg")# Egger's linear regression test
+
+```
+
+
+$ month
+
+```{r,fig.height=15, fig.width=10, echo=FALSE,warning=FALSE, eval=T}
+mw1<- update(m1, byvar=Month, print.byvar=T)
+#pdf("figs2/VE_Severe_ALL.pdf", width = 10, height = 15)
+pdf("figs7/Fig6.pdf", width = 10, height = 12)
+forest(mw1,
+       leftlabs = c("Study"),
+       digits = 2,
+        bysort=T,
+       overall= T, overall.hetstat = F,
+       ref=NA,
+       col.by="black",
+       #sortvar = Year_Publication,
+       rightcols=c("effect", "ci"),
+       sortvar = mean,
+       rightlabs = c("Mean VE", "95% CI"),
+       squaresize=0.5,
+       col.square="blue",
+       col.diamond="maroon",
+       col.diamond.lines="maroon",
+      xlab="Vaccine protection against severe disease (%)",
+       print.pval.Q = T,
+       digits.pval.Q=4,
+       print.tau2=F,
+       xlim = c(-20,100), at = c(-20, 0,20,40,60,80,100),pscale = 100,
+       backtransf = T)
+dev.off()
+
+```
+
+# vaccine
+
+
+```{r,fig.height=6, fig.width=4, echo=FALSE,warning=FALSE, eval=T}
+
+dat=read.csv("data/Vaccines6.csv")
+
+#dat=read.csv("data/Vaccines5.csv")
+
+l1=is.na(dat$Est_severea)
+dat=dat[!l1,]
+
+
+l1=is.na(dat$Hospitalization)
+dat=dat[!l1,]
+
+dat$mean=dat$Est_severea
+#dat$seTE=(log(dat$RR_U-log(dat$RR_L))/(3.92))
+
+dat$lower <- dat$lcl_severea
+
+dat$upper <- dat$UCL_severea
+
+dat$sd <- (dat$upper - dat$lower)/3.92
+```
+
+
+
+```{r, echo=FALSE,warning=FALSE, eval=T}
+m1<- metamean(n=N_vaccinated,
+                   mean = mean,
+                   sd = sd,
+                   studlab = paste(Study, Month, sep = ", "),
+                    comb.fixed = F,
+                   comb.random = TRUE,
+                   data = dat,
+                   sm = "MRAW",
+                   method.tau = "DL",
+                   hakn = T)
+
+
+```
+
+```{r,fig.height=15, fig.width=10, echo=FALSE,warning=FALSE, eval=T}
+mw1v<- update(m1, byvar=Vaccine, print.byvar=T)
+
+pdf("figs7/S3.pdf", width = 10, height = 12)
+forest(mw1v,
+       leftlabs = c("Study, Time-point"),
+       digits = 2,
+        bysort=T,
+       overall= T, overall.hetstat = F,
+       ref=NA,
+       col.by="black",
+       #sortvar = Year_Publication,
+       rightcols=c("effect", "ci"),
+       sortvar = mean,
+       rightlabs = c("Mean VE", "95% CI"),
+       squaresize=0.5,
+       col.square="blue",
+       col.diamond="maroon",
+       col.diamond.lines="maroon",
+        xlab="Vaccine protection against severe disease (%)",
+       print.pval.Q = T,
+       digits.pval.Q=4,
+       print.tau2=F,
+       xlim = c(-20,100), at = c(-20, 0,20,40,60,80,100),pscale = 100,
+       backtransf = T)
+dev.off()
+
+```
+
+# by study design
+
+```{r,fig.height=15, fig.width=10, echo=FALSE,warning=FALSE, eval=T}
+mv1<- update(m1, byvar=RCT_or_Non.RCT, print.byvar=F)
+
+
+pdf("figs7/S6.pdf", width = 10, height = 12)
+forest(mv1,
+       #leftcols = c("Study"),
+       leftlabs = c("Study, Time-point"),
+       digits = 2,
+        bysort=T,
+       overall= T, overall.hetstat = F,
+       ref=NA,
+       col.by="black",
+       #sortvar = Year_Publication,
+       rightcols=c("effect", "ci"),
+       sortvar = mean,
+       rightlabs = c("Mean VE", "95% CI"),
+       squaresize=0.5,
+       col.square="blue",
+       col.diamond="maroon",
+       col.diamond.lines="maroon",
+       xlab="Vaccine protection against Severe Disease (%)",
+       print.pval.Q = T,
+       digits.pval.Q=4,
+       print.tau2=F,
+       xlim = c(-20,100), at = c(-20, 0,20,40,60,80,100),pscale = 100,
+       backtransf = T)
+dev.off()
+
+```
+
+
+
+# by country
+
+```{r,fig.height=15, fig.width=10, echo=FALSE,warning=FALSE, eval=T}
+mv1<- update(m1, byvar=WHO, print.byvar=F)
+
+
+pdf("figs7/S9.pdf", width = 8, height = 12)
+forest(mv1,
+       #leftcols = c("Study"),
+       leftlabs = c("Study, Time-point"),
+       digits = 2,
+        bysort=T,
+       overall= T, overall.hetstat = F,
+       ref=NA,
+       col.by="black",
+       #sortvar = Year_Publication,
+       rightcols=c("effect", "ci"),
+       sortvar = mean,
+       rightlabs = c("Mean VE", "95% CI"),
+       squaresize=0.5,
+       col.square="blue",
+       col.diamond="maroon",
+       col.diamond.lines="maroon",
+       xlab="Vaccine protection against severe disease (%)",
+       print.pval.Q = T,
+       digits.pval.Q=4,
+       print.tau2=F,
+       xlim = c(-20,100), at = c(-20, 0,20,40,60,80,100),pscale = 100,
+       backtransf = T)
+dev.off()
+
+```
+
+
+### Meta-analysis with Maximum Likelihood Method: Effectiveness against symptomatic infection
+
+```{r, eval=T,,echo=FALSE,warning=FALSE}
+
+dat=read.csv("data/Vaccines6.csv")
+dat <- dat[ which(dat$Month <5),]
+
+l1=is.na(dat$Estimate_symptomatic)
+dat=dat[!l1,]
+
+dat$mean=dat$Estimate_symptomatic
+#dat$seTE=(log(dat$RR_U-log(dat$RR_L))/(3.92))
+
+dat$lower <- dat$LCI_symptomatic
+
+dat$upper <- dat$UCI_symptomatic
+
+dat$sd <- (dat$upper - dat$lower)/3.92
+```
+
+
+
+```{r, echo=FALSE,warning=FALSE, eval=T}
+m<- metamean(n=N_vaccinated,
+                   mean = mean,
+                   sd = sd,
+                   studlab = Study,
+                    comb.fixed = FALSE,
+                   comb.random = TRUE,
+                   data = dat,
+                   sm = "MRAW",
+                   method.tau = "DL",
+                   hakn =F,
+                   title = "VE infections Overall")
+
+
+```
+
+
+# Funnel plots  -----------------------------------------
+```{r}
+
+pdf("figs7/S11B.pdf", width = 15, height = 8)
+funnel(m,xlab = "VE against symptomatic COVID-19  (%)",studlab = F)
+dev.off()
+
+metabias(m, method="linreg")# Egger's linear regression test
+
+```
+
+
+# by month
+
+```{r,fig.height=15, fig.width=10, echo=FALSE,warning=FALSE, eval=T}
+
+mw<- update(m, byvar=Month, print.byvar=T)
+
+pdf("figs7/Fig5.pdf", width = 10, height = 10)
+forest(mw,
+       #leftcols = c("Study"),
+       leftlabs = c("Study"),
+       digits = 2,
+        bysort=T,
+       overall= T, overall.hetstat = F,
+       ref=NA,
+       col.by="black",
+       #sortvar = Year_Publication,
+       rightcols=c("effect", "ci"),
+       sortvar = mean,
+       rightlabs = c("Mean VE", "95% CI"),
+       squaresize=0.5,
+       col.square="blue",
+       col.diamond="maroon",
+       col.diamond.lines="maroon",
+       #xlab="Vaccine Effectiveness against SARS-CoV-2 infections (%)",
+       xlab="Vaccine protection against symptomatic infection (%)",
+       print.pval.Q = T,
+       digits.pval.Q=4,
+       print.tau2=F,
+       xlim = c(-20,100), at = c(-20, 0,20,40,60,80,100),pscale = 100,
+       backtransf = T)
+dev.off()
+
+```
+
+
+```{r, eval=T,,echo=FALSE,warning=FALSE}
+
+dat=read.csv("data/Vaccines6.csv")
+dat <- dat[ which(dat$Month <5),]
+
+l1=is.na(dat$Estimate_symptomatic)
+dat=dat[!l1,]
+
+dat$mean=dat$Estimate_symptomatic
+#dat$seTE=(log(dat$RR_U-log(dat$RR_L))/(3.92))
+
+dat$lower <- dat$LCI_symptomatic
+
+dat$upper <- dat$UCI_symptomatic
+
+dat$sd <- (dat$upper - dat$lower)/3.92
+```
+
+
+
+```{r, echo=FALSE,warning=FALSE, eval=T}
+m<- metamean(n=N_vaccinated,
+                   mean = mean,
+                   sd = sd,
+                   studlab = paste(Study, Month, sep = ", "),
+                    comb.fixed = FALSE,
+                   comb.random = TRUE,
+                   data = dat,
+                   sm = "MRAW",
+                   method.tau = "DL",
+                   hakn =F,
+                   title = "VE infections Overall")
+
+
+```
+
+
+
+
+
+
+# vaccine
+
+```{r,fig.height=15, fig.width=10, echo=FALSE,warning=FALSE, eval=T}
+mw1v<- update(m, byvar=Vaccine, print.byvar=T)
+
+pdf("figs7/S2.pdf", width = 10, height = 12)
+forest(mw1v,
+       leftlabs = c("Study, Time-point"),
+       digits = 2,
+        bysort=T,
+       overall= T, overall.hetstat = F,
+       ref=NA,
+       col.by="black",
+       #sortvar = Year_Publication,
+       rightcols=c("effect", "ci"),
+       sortvar = mean,
+       rightlabs = c("Mean VE", "95% CI"),
+       squaresize=0.5,
+       col.square="blue",
+       col.diamond="maroon",
+       col.diamond.lines="maroon",
+        xlab="Vaccine protection against symptomatic infection (%)",
+       print.pval.Q = T,
+       digits.pval.Q=4,
+       print.tau2=F,
+       xlim = c(-20,100), at = c(-20, 0,20,40,60,80,100),pscale = 100,
+       backtransf = T)
+dev.off()
+
+```
+
+
+
+
+# by study design
+
+
+
+
+```{r,fig.height=15, fig.width=10, echo=FALSE,warning=FALSE, eval=T}
+mv1<- update(m, byvar=RCT_or_Non.RCT, print.byvar=F)
+
+
+pdf("figs7/S5.pdf", width = 10, height = 12)
+forest(mv1,
+       #leftcols = c("Study"),
+       leftlabs = c("Study, Time-point"),
+       digits = 2,
+        bysort=T,
+       overall= T, overall.hetstat = F,
+       ref=NA,
+       col.by="black",
+       #sortvar = Year_Publication,
+       rightcols=c("effect", "ci"),
+       sortvar = mean,
+       rightlabs = c("Mean VE", "95% CI"),
+       squaresize=0.5,
+       col.square="blue",
+       col.diamond="maroon",
+       col.diamond.lines="maroon",
+       xlab="Vaccine protection against symptomatic infection (%)",
+       print.pval.Q = T,
+       digits.pval.Q=4,
+       print.tau2=F,
+       xlim = c(-20,100), at = c(-20, 0,20,40,60,80,100),pscale = 100,
+       backtransf = T)
+dev.off()
+
+```
+
+
+
+
+# by country
+
+```{r, eval=T,,echo=FALSE,warning=FALSE}
+
+dat=read.csv("data/Vaccines6.csv")
+#dat <- dat[ which(dat$Month <5),]
+
+l1=is.na(dat$Estimate_symptomatic)
+dat=dat[!l1,]
+
+dat$mean=dat$Estimate_symptomatic
+#dat$seTE=(log(dat$RR_U-log(dat$RR_L))/(3.92))
+
+dat$lower <- dat$LCI_symptomatic
+
+dat$upper <- dat$UCI_symptomatic
+
+dat$sd <- (dat$upper - dat$lower)/3.92
+```
+
+
+
+```{r, echo=FALSE,warning=FALSE, eval=T}
+m<- metamean(n=N_vaccinated,
+                   mean = mean,
+                   sd = sd,
+                   studlab = paste(Study, Month, sep = ", "),
+                    comb.fixed = FALSE,
+                   comb.random = TRUE,
+                   data = dat,
+                   sm = "MRAW",
+                   method.tau = "DL",
+                   hakn =F,
+                   title = "VE infections Overall")
+
+
+```
+
+
+```{r,fig.height=15, fig.width=10, echo=FALSE,warning=FALSE, eval=T}
+mv1<- update(m, byvar=WHO, print.byvar=F)
+
+
+pdf("figs7/S8.pdf", width = 8, height = 12)
+forest(mv1,
+       #leftcols = c("Study"),
+       leftlabs = c("Study, Time-point"),
+       digits = 2,
+        bysort=T,
+       overall= T, overall.hetstat = F,
+       ref=NA,
+       col.by="black",
+       #sortvar = Year_Publication,
+       rightcols=c("effect", "ci"),
+       sortvar = mean,
+       rightlabs = c("Mean VE", "95% CI"),
+       squaresize=0.5,
+       col.square="blue",
+       col.diamond="maroon",
+       col.diamond.lines="maroon",
+       xlab="Vaccine protection against symptomatic infection (%)",
+       print.pval.Q = T,
+       digits.pval.Q=4,
+       print.tau2=F,
+       xlim = c(-20,100), at = c(-20, 0,20,40,60,80,100),pscale = 100,
+       backtransf = T)
+dev.off()
+
+```
+
+
+
+
